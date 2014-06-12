@@ -23,6 +23,7 @@ int verify_uname(char*);
 void User_MainScreen();
 void LoginMenu();
 char* hidePassword();
+void bookShow();
 /*User class containing details of Users*/
 class User{
 	public:
@@ -32,29 +33,10 @@ class User{
 };
 
 void User::showUserDetail(){
-	cout<<"\n\n Username: "<<this.Uname<<" | Full Name: "<<this.Name<<" | Email: "<<this.Email<<"\n Address:"<<this.Address<<" | Contact: "<<this.Phone;
+	cout<<"\n\n\tUsername: "<<this->Uname<<"\n\tFull Name: "<<this->Name<<"\n\tEmail: "<<this->Email<<"\n\tAddress:"<<this->Address<<"\n\tContact: "<<this->Phone;
 }
 /* Global Class Variables to Access objects*/
 User Global_User;
-
-void LoginMenu(){
-		int choice=0;
-			system("cls");
-			cout<<"\n********************************************************************************\n\t\t\t\tWELCOME To GALAXY Cinema: Login/SignUp";
-			cout<<"\n********************************************************************************\n";
-			cout<<"\n\n\t\t1. Login\n\n\t\t2. Sign Up\n\n\t\t3. Exit\n\n\t\t-->";
-			cin>>choice;
-			switch(choice){
-				case 1: existingUser();
-						break;
-				case 2: newUser();
-						break;
-				case 3: system("exit");
-						break;
-				default:
-						cout<<"Wrong Input!!";
-			}
-}	
 
 /* Function to Add new User to the File*/
 void newUser(){
@@ -68,13 +50,13 @@ void newUser(){
 		cout<<"\n********************************************************************************\n\t\t\t\tNEW USER : WELCOME To GALAXY Cinema";
 		cout<<"\n********************************************************************************\n";
 		cout<<"\n Please Enter following details:";
-		cout<<"\n\tUserName: ";
+		cout<<"\n\n\tUserName: ";
 		gets(NUser.Uname);
 		fflush(stdin);	//fflush is used to clear the keyboard input buffer
 		cout<<"\tPassword: ";
 		strcpy(NUser.Pass,hidePassword());
 		fflush(stdin);
-		cout<<"\tEmail ID: ";
+		cout<<"\n\tEmail ID: ";
 		gets(NUser.Email);
 		fflush(stdin);
 		cout<<"\tFirst & Last name: ";
@@ -106,6 +88,7 @@ void newUser(){
 			cout<<"\n Account Added, Congratulations!!";
 			addToFile("User.dat", NUser);
 			getchar();
+			LoginMenu();
 		}
 	}
 }
@@ -132,17 +115,18 @@ void existingUser(){
 }
 
 int verify_uname(char *Name){	//return false if not Unique else true
-	ifstream inFile;
 	User tempUser;
-	inFile.open("User.dat",ios::in);
-	while(!inFile.eof()){
-		inFile.read((char*)&tempUser, sizeof(tempUser));
-		if(!strcmpi(tempUser.Uname,Name)){
-			inFile.close();
-			return 0;
+	ifstream inFile("User.dat");
+	if(inFile){
+		while(!inFile.eof()){
+			inFile.read((char*)&tempUser, sizeof(tempUser));
+			if(!strcmpi(tempUser.Uname,Name)){
+				inFile.close();
+				return 0;
+			}
 		}
+		inFile.close();
 	}
-	inFile.close();
 	return 1;
 }
 
@@ -190,7 +174,11 @@ void User_MainScreen(){
 	cout<<"\n********************************************************************************\n\t\t\t\t User Menu: Main Screen";
 	cout<<"\n********************************************************************************\n";
 	Global_User.showUserDetail();
-	cout<<"\n\n Choose from following options:\n\t1. Book A Show\n\t2. Cancel Ticket\n\t3. View Booking History\n\t4. Logout\n\t-->";
+	cout<<"\n Choose from following options:\n\t1. Book A Show\n\t2. Cancel Ticket\n\t3. View Booking History\n\t4. Logout\n\t-->";
+	switch(choice){
+		case 1:	bookShow();
+				break;
+	}
 	getchar();
 }
 
@@ -204,14 +192,63 @@ class Ticket{
 /*Movie class containing details of Movies*/
 class Movie{
 	public:		//Movie is primary Key
-		char Movie[20], Date[12], Time[12], Detail[100];
+		char MovieTitle[30], releaseDate[12], screeningTime[3][10], Detail[40];
 		int TotalSeats, SeatsBooked, SeatsLeft;
 		Movie(){
-			TotalSeats = 120;
+			TotalSeats = 120;	// Every Movie Screening has 120 seats
 			SeatsBooked = 0;
 			SeatsLeft = 0;
 		}
+		void addMovie();
+		void getMovieDetail(int);
 };
+
+void Movie::getMovieDetail(int index){
+	cout<<"\n"<<index<<". Title: "<<this->MovieTitle<<" | Release Date: "<<this->releaseDate<<" | Detail: "<<this->Detail;
+}
+
+void Movie::addMovie(){
+	system("cls");
+	cout<<"\n********************************************************************************\n\t\t\t\t Admin Menu: Adding Movie";
+	cout<<"\n********************************************************************************\n";
+	cout<<"\n Enter the following Movie Details:";
+	fflush(stdin);	
+	cout<<"\n\tMovie Title: ";
+	gets(MovieTitle);
+	fflush(stdin);	//fflush is used to clear the keyboard input buffer
+	cout<<"\n\tRelease Date: ";
+	gets(releaseDate);
+	fflush(stdin);	
+	cout<<"\n\tScreening Time [3](Daily):";
+	for(int i=0;i<3;i++){
+		cout<<"\n\t\t"<<i+1<<" : ";
+		gets(screeningTime[i]);
+		fflush(stdin);	
+	}
+	cout<<"\n\tMovie Details: ";
+	gets(Detail);
+	fflush(stdin);	
+}
+
+void postNewMovie(){
+	Movie Mo;
+	Mo.addMovie();
+	addToFile("Movie.dat",Mo);
+	cout<<"\n Movie added successfully!!";
+}
+
+void bookShow(){
+	int i=0;
+	Movie tempMovie[10];
+	ifstream inFile("Movie.dat");
+	if(inFile){
+		while(!inFile.eof()){
+			inFile.read((char*)&tempMovie[i], sizeof(tempMovie[i]));
+			tempMovie[i].getMovieDetail(i+1);
+			++i;
+		}	//ishan
+	}
+}
 
 /*Administrator Class*/
 class Admin{
@@ -228,7 +265,7 @@ class Admin{
 };
 
 int Admin::verifyAdmin(char* U, char* P){
-	if(!strcmpi(U,this.Uname) && !strcmpi(P,this.Pass))	return 1;
+	if(!strcmpi(U,this->Uname) && !strcmpi(P,this->Pass))	return 1;
 	return 0;
 }
 
@@ -240,17 +277,23 @@ void Admin_MainScreen(){
 	cout<<"\n********************************************************************************\n";
 	cout<<"\n\t1. Post New Movie\n\t2. Remove Movie\n\t3. View Movie Stats\n\t4. View User Stats\n\t4. Logout\n\t-->";
 	cin>>choice;
-	
+	switch(choice){
+		case 1:	postNewMovie();
+				break;
+	}
 }
 
 /* Function for Administrator to Login to the System*/
 void AdminLogin(){
 	Admin MainAdmin;
 	char U[15], P[15];
+	system("cls");
 	cout<<"\n********************************************************************************\n\t\t\t\t Admin Menu: Login Screen";
 	cout<<"\n********************************************************************************\n";
+	fflush(stdin);
 	cout<<"\n\tEnter Administrator's ID: ";
 	gets(U);
+	fflush(stdin);
 	cout<<"\n\tEnter Password: ";
 	strcpy(P,hidePassword());
 	
@@ -262,6 +305,28 @@ void AdminLogin(){
 		LoginMenu();
 	}
 }
+
+void LoginMenu(){
+		int choice=0;
+			system("cls");
+			cout<<"\n********************************************************************************\n\t\t\t\tWELCOME To GALAXY Cinema: Login/SignUp";
+			cout<<"\n********************************************************************************\n";
+			cout<<"\n\n\t\t1. Login\n\n\t\t2. Sign Up\n\n\t\t3. Administrator Login (Not for Users)\n\n\t\t4. Exit\n\n\t\t-->";
+			cin>>choice;
+			switch(choice){
+				case 1: existingUser();
+						break;
+				case 2: newUser();
+						break;
+				case 3: AdminLogin();
+						break;
+				case 4: system("exit");
+						break;
+				default:
+						cout<<"Wrong Input!!";
+			}
+}	
+
 
 int main(){
 	LoginMenu();
