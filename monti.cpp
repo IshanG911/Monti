@@ -1,8 +1,15 @@
 #include<cstring>
+#include<stdlib.h>
+#include<time.h>
 #include<iostream>
 #include<fstream>
 #include<conio.h>
+
+#define ScreeningFrequency 3
+
 using namespace std;
+char EMPTYSEAT=176, BOOKEDSEAT=219;
+
 
 /* Generic functions to Add & Delete Objects from file */
 
@@ -33,7 +40,8 @@ class User{
 };
 
 void User::showUserDetail(){
-	cout<<"\n\n\tUsername: "<<this->Uname<<"\n\tFull Name: "<<this->Name<<"\n\tEmail: "<<this->Email<<"\n\tAddress:"<<this->Address<<"\n\tContact: "<<this->Phone;
+	cout<<"\n\tUsername: "<<this->Uname<<"\tFull Name: "<<this->Name<<"\n\tEmail: "<<this->Email<<"\tContact: "<<this->Phone<<"\n\tAddress:"<<this->Address;
+	cout<<"\n-------------------------------------------------------------------------------";
 }
 /* Global Class Variables to Access objects*/
 User Global_User;
@@ -175,6 +183,7 @@ void User_MainScreen(){
 	cout<<"\n********************************************************************************\n";
 	Global_User.showUserDetail();
 	cout<<"\n Choose from following options:\n\t1. Book A Show\n\t2. Cancel Ticket\n\t3. View Booking History\n\t4. Logout\n\t-->";
+	cin>>choice;
 	switch(choice){
 		case 1:	bookShow();
 				break;
@@ -182,32 +191,98 @@ void User_MainScreen(){
 	getchar();
 }
 
-/*Ticket class containing details of Transactions*/
-class Ticket{
-	public:
-		char Uname[15], Movie[20], Date[12], Time[12];	//Uname is primary Key
-		int TotalSeats, SeatNo[6], TotalCost;	//Seat No.s are limited to 6 per User
-};
-
 /*Movie class containing details of Movies*/
 class Movie{
 	public:		//Movie is primary Key
-		char MovieTitle[30], releaseDate[12], screeningTime[3][10], Detail[40];
-		int TotalSeats, SeatsBooked, SeatsLeft;
+		short int SEAT[ScreeningFrequency][120];
+		char MovieTitle[30], screenDate[ScreeningFrequency][12], screeningTime[10], Detail[40];	//Movie Screened for 5 Days
+		int TotalSeats[ScreeningFrequency], SeatsBooked[ScreeningFrequency], SeatsLeft[ScreeningFrequency], Fare;
 		Movie(){
-			TotalSeats = 120;	// Every Movie Screening has 120 seats
-			SeatsBooked = 0;
-			SeatsLeft = 0;
+			short int i=0,j=0;
+			for(i=0;i<ScreeningFrequency;i++){
+				TotalSeats[i] = 120;	// Every Movie Screening has 120 seats
+				SeatsBooked[i] = 0;
+				SeatsLeft[i] = 120;
+				for(j=0; j<120; j++)
+				{
+						SEAT[i][j]=0;
+				}
+			}
 		}
 		void addMovie();
 		void getMovieDetail(int);
+		void getFullMovieDetail();
 };
 
+/*Ticket class containing details of Transactions*/
+class Ticket{
+	public:
+		int TID;//random unique Ticket ID
+		char Uname[15], MovieTitle[20], Date[12], Time[12];	//Uname is primary Key
+		int TotalSeats, TotalCost;	//Seat No.s are limited to 6 per User
+		char seatNo[10][3];
+		void MakeNewTicket(Movie Mov, char seats[][3], short int nos, short int chooseDate);
+		void PrintTicket();
+};
+
+void Ticket::MakeNewTicket(Movie Mov, char seats[10][3], short int nos, short int chooseDate)
+{
+	short int i=0;
+	char choice='n';
+	srand(time(NULL));
+	this->TID = 99999 + rand()%999999;
+	strcpy(this->Uname, Global_User.Uname);
+	strcpy(this->MovieTitle, Mov.MovieTitle);
+	strcpy(this->Date, Mov.screenDate[chooseDate]);
+	strcpy(this->Time, Mov.screeningTime);
+	this->TotalSeats = nos;
+	this->TotalCost = nos*Mov.Fare;
+//Insert all seat no.s in the array	
+	for(i=0;i<nos;i++)
+		strcpy(this->seatNo[i], seats[i]);
+//Make remaining seats NULL
+	for(;i<10;i++)
+		strcpy(this->seatNo[i],"\0");
+	PrintTicket();	
+	cout<<"\n Confirm Ticket? (Y/N): ";
+	cin>>choice;
+	if(choice=='y' || choice=='Y')
+		addToFile("Ticket.dat",this);
+	User_MainScreen();
+}
+
+void Ticket::PrintTicket(){
+	short int i=0;
+	cout<<"\n\n---------------------------: Ticket Details :-----------------------------------";
+	cout<<"\n TID: "<<TID<<"\tUSER: "<<Uname<<"\t Movie: "<<MovieTitle<<"\n Screen: Prometheus (Floor 1)";
+	cout<<"\n DATE: "<<Date<<"\t TIME: "<<Time<<"\n TotalSeats: "<<TotalSeats;
+	cout<<"\t SEAT: ";
+	for( i=0;i<TotalSeats-1;i++)
+		cout<<seatNo[i]<<", ";
+	cout<<seatNo[i];
+	cout<<"\t TOTAL FARE: "<<TotalCost;
+	cout<<"\n---------------------------------: ~ :-----------------------------------------";
+}
+
 void Movie::getMovieDetail(int index){
-	cout<<"\n"<<index<<". Title: "<<this->MovieTitle<<" | Release Date: "<<this->releaseDate<<" | Detail: "<<this->Detail;
+	cout<<"\n"<<index<<". Title: "<<this->MovieTitle<<" | Release Date: "<<this->screenDate[0]<<" | Detail: "<<this->Detail;
+	cout<<"\n-----------------------------------------------------------------";
+}
+
+void Movie::getFullMovieDetail(){
+	cout<<"\n********************************************************************************\n\t\t\t\t User Menu: Movie Details";
+	cout<<"\n********************************************************************************\n";
+	cout<<"\n\tMovie Title: "<<MovieTitle;
+	cout<<"\n\tMovie Details: "<<Detail;
+	cout<<"\n\tScreening Time (Daily): "<<screeningTime;
+	cout<<"\n\tScreening Dates: ";
+	for(short int i=0;i<ScreeningFrequency;i++)
+		cout<<screenDate[i]<<',';
+	cout<<"\n------------------------------------------------------------------";
 }
 
 void Movie::addMovie(){
+	short int i=0;
 	system("cls");
 	cout<<"\n********************************************************************************\n\t\t\t\t Admin Menu: Adding Movie";
 	cout<<"\n********************************************************************************\n";
@@ -216,18 +291,20 @@ void Movie::addMovie(){
 	cout<<"\n\tMovie Title: ";
 	gets(MovieTitle);
 	fflush(stdin);	//fflush is used to clear the keyboard input buffer
-	cout<<"\n\tRelease Date: ";
-	gets(releaseDate);
-	fflush(stdin);	
-	cout<<"\n\tScreening Time [3](Daily):";
-	for(int i=0;i<3;i++){
-		cout<<"\n\t\t"<<i+1<<" : ";
-		gets(screeningTime[i]);
+	for(i=0;i<ScreeningFrequency;i++){
+		cout<<"\tScreening Date "<<i+1<<" : ";
+		gets(screenDate[i]);
 		fflush(stdin);	
 	}
-	cout<<"\n\tMovie Details: ";
+	cout<<"\tScreening Time (Daily):";
+	gets(screeningTime);
+	fflush(stdin);	
+	cout<<"\tMovie Details: ";
 	gets(Detail);
 	fflush(stdin);	
+	cout<<"\tBase Fare: ";
+	cin>>Fare;
+	fflush(stdin);
 }
 
 void postNewMovie(){
@@ -237,16 +314,95 @@ void postNewMovie(){
 	cout<<"\n Movie added successfully!!";
 }
 
+void drawSeats(Movie selectedMovie, int chooseDate){
+	short int i=0,j=0;
+	char ch='A';
+	system("cls");
+	cout<<"\n   0\t1\t2\t3\t4\t5\t6\t7\t8\t9\n";
+	for(i=0;i<120;i++){
+		if(i%10 == 0)
+			cout<<'\n'<<" "<<ch++<<" ";
+		if(selectedMovie.SEAT[chooseDate][i] == 0)	//when seat is empty output emptyseat
+			cout<<EMPTYSEAT<<'\t';
+		else
+			cout<<BOOKEDSEAT<<'\t';
+	}
+	cout<<"\n\tEmpty Seats:"<<EMPTYSEAT<<"\t\tBooked Seats:"<<BOOKEDSEAT;
+}
+
 void bookShow(){
-	int i=0;
-	Movie tempMovie[10];
+	Ticket T;
+	short int i=0, choice=0, nos=0, seat_no=-1,chooseDate=0;
+	char seat_id[3], seat_array[10][3];
+	Movie tempMovie[5], selectedMovie;
 	ifstream inFile("Movie.dat");
+	system("cls");
 	if(inFile){
 		while(!inFile.eof()){
 			inFile.read((char*)&tempMovie[i], sizeof(tempMovie[i]));
 			tempMovie[i].getMovieDetail(i+1);
 			++i;
-		}	//ishan
+		}
+		cout<<"\n Choose the show: ";
+		cin>>choice;
+		i=0;
+		inFile.close();
+		inFile.open("Movie.dat",ios::in);
+//		inFile.seekg(0, ios::beg);
+		do{
+			inFile.read((char*)&selectedMovie, sizeof(selectedMovie));
+			++i;
+		}while(!inFile.eof() && i<choice);
+		
+		selectedMovie.getFullMovieDetail();
+		cout<<"\n Choose Date of Booking the Show from following:";
+	//Choose the show from a particular date	
+		for(i=0;i<ScreeningFrequency;i++)
+			cout<<"\n\t"<<i+1<<".\t"<<selectedMovie.screenDate[i];
+		cout<<"\n\t\t-->";
+		cin>>chooseDate;
+		chooseDate-=1;
+	//Check if the selected date is valid
+		if(chooseDate>=0 && chooseDate<=ScreeningFrequency){
+			drawSeats(selectedMovie, chooseDate);
+			cout<<"\n\n Number of Seats to be Booked:";
+			cin>>nos;
+			if(nos<=selectedMovie.SeatsLeft[chooseDate]){
+					for(i=0;i<nos;i++){
+						seat_no = -1;
+						cout<<"\n Seat "<<i+1<<": ";
+						cin>>seat_id;
+			/* Seat ID is now parsed to find the exact seat no. and weather it is available*/
+						if(seat_id[0]>='a' && seat_id[0]<='j')
+							if(seat_id[1]>='0' && seat_id[1]<='9'){
+								seat_no = seat_id[0]-'a';
+								seat_no *= 10;
+								seat_no += (seat_id[1] - '0');					
+							}
+						else if(seat_id[0]>='A' && seat_id[0]<='J')
+							if(seat_id[1]>='0' && seat_id[1]<='9'){
+								seat_no = seat_id[0]-'A';
+								seat_no *= 10;
+								seat_no += (seat_id[1] - '0');					
+							}
+						else cout<<"\n Invalid Seat No. entered";
+												
+						if(selectedMovie.SEAT[chooseDate][seat_no]==1)
+							cout<<"\n Sorry! Selected seat is already booked!!";
+						else if(selectedMovie.SEAT[chooseDate][seat_no]==0 && seat_no!=-1){
+							selectedMovie.SEAT[chooseDate][seat_no] = 1;	// Book the seat
+							selectedMovie.SeatsBooked[chooseDate]++;
+							selectedMovie.SeatsLeft[chooseDate]--;
+							strcpy(seat_array[i],seat_id);
+							
+							cout<<" Seat "<<seat_id<<" booked. Charge added to the Total!\n";
+						}
+						else;
+					}
+			}
+			cout<<"\n All seats booked... generating reciept for your transaction!";
+			T.MakeNewTicket(selectedMovie, seat_array, nos, chooseDate);
+		}
 	}
 }
 
@@ -272,15 +428,18 @@ int Admin::verifyAdmin(char* U, char* P){
 /*Screen with all Admin Options*/
 void Admin_MainScreen(){
 	int choice=0;
-	system("cls");
-	cout<<"\n********************************************************************************\n\t\t\t\t Admin Menu: Main Screen";
-	cout<<"\n********************************************************************************\n";
-	cout<<"\n\t1. Post New Movie\n\t2. Remove Movie\n\t3. View Movie Stats\n\t4. View User Stats\n\t4. Logout\n\t-->";
-	cin>>choice;
-	switch(choice){
-		case 1:	postNewMovie();
-				break;
-	}
+	do{
+		system("cls");
+		cout<<"\n********************************************************************************\n\t\t\t\t Admin Menu: Main Screen";
+		cout<<"\n********************************************************************************\n";
+		cout<<"\n\t1. Post New Movie\n\t2. Remove Movie\n\t3. View Movie Stats\n\t4. View User Stats\n\t5. Logout\n\t-->";
+		cin>>choice;
+		switch(choice){
+			case 1:	postNewMovie();
+					break;
+		}
+	}while(choice!=5);
+	LoginMenu();
 }
 
 /* Function for Administrator to Login to the System*/
